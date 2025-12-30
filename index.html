@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>منظومة جمعية آل بوعوجة</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { 
+            --primary: #1a73e8; --secondary: #34a853; --danger: #ea4335; 
+            --warning: #fbbc04; --purple: #9b59b6; --sidebar-bg: #fff; --main-bg: #f8f9fa; 
+        }
+        body { font-family: 'Cairo', sans-serif; margin: 0; background: var(--main-bg); display: flex; height: 100vh; overflow: hidden; flex-direction: column; }
+        
+        #portal-screen { position: fixed; inset: 0; background: #fff; display: flex; align-items: center; justify-content: center; z-index: 1000; flex-direction: column; gap: 20px; }
+        .portal-card { width: 400px; padding: 30px; border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); text-align: center; background: white; border: 1px solid #eee; }
+        
+        .search-container { position: relative; width: 100%; }
+        .suggestions-box { 
+            position: absolute; top: 100%; left: 0; right: 0; background: #fff; 
+            border: 1px solid #ddd; border-radius: 0 0 12px 12px; z-index: 1001; 
+            max-height: 200px; overflow-y: auto; display: none; box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+        }
+        .suggestion-item { padding: 12px; cursor: pointer; text-align: right; border-bottom: 1px solid #f0f0f0; font-size: 14px; transition: 0.2s; }
+        .suggestion-item:hover { background: #f1f3f4; color: var(--primary); font-weight: bold; }
+
+        .app-container { display: flex; flex: 1; overflow: hidden; }
+
+        .sidebar { width: 280px; background: var(--sidebar-bg); border-left: 1px solid #ddd; display: none; flex-direction: column; padding: 20px 0; }
+        .sidebar-header { text-align: center; color: var(--primary); font-weight: bold; font-size: 22px; margin-bottom: 30px; padding: 0 10px; }
+        .nav-item { padding: 15px 25px; cursor: pointer; display: flex; align-items: center; gap: 12px; transition: 0.3s; color: #5f6368; font-weight: 600; }
+        .nav-item:hover, .nav-item.active { background: #f1f3f4; color: var(--primary); border-right: 5px solid var(--primary); }
+        
+        .main-content { flex: 1; display: none; flex-direction: column; overflow-y: auto; padding: 30px; padding-bottom: 80px; }
+        .view-section { display: none; }
+        .view-section.active { display: block; }
+        .card { background: #fff; padding: 25px; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); max-width: 900px; margin: 0 auto; }
+
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 30px; }
+        .stat-card { background: #fff; padding: 20px; border-radius: 20px; text-align: center; border: 1px solid #eee; position: relative; overflow: hidden; transition: 0.3s; box-shadow: 0 5px 15px rgba(0,0,0,0.02); }
+        .stat-card:hover { transform: translateY(-5px); box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+        .stat-card h4 { margin: 0 0 10px 0; font-size: 14px; color: #666; }
+        .stat-card b { font-size: 22px; display: block; color: #333; }
+        .stat-card::after { content: ""; position: absolute; bottom: 0; left: 0; width: 100%; height: 4px; }
+        .stat-card.blue::after { background: var(--primary); }
+        .stat-card.green::after { background: var(--secondary); }
+        .stat-card.red::after { background: var(--danger); }
+        .stat-card.orange::after { background: var(--warning); }
+        .stat-card.purple::after { background: var(--purple); }
+        
+        .log-container { margin-top: 20px; border: 1px solid #f0f0f0; border-radius: 20px; overflow: hidden; background: #fff; }
+        .log-table { width: 100%; border-collapse: collapse; }
+        .log-table th { background: #f8f9fa; padding: 15px; font-size: 14px; text-align: right; color: #555; }
+        .log-table td { padding: 15px; border-bottom: 1px solid #fcfcfc; font-size: 14px; }
+
+        input, select { width: 100%; padding: 14px; margin: 10px 0; border: 1px solid #ddd; border-radius: 12px; font-family: 'Cairo'; outline: none; box-sizing: border-box; }
+        .btn-main { width: 100%; padding: 14px; border: none; border-radius: 12px; background: var(--primary); color: #fff; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .btn-main:hover { opacity: 0.9; }
+        .btn-msg { margin-top: 10px; font-weight: bold; }
+        
+        .staff-actions button { padding: 5px 10px; border-radius: 8px; border: none; cursor: pointer; font-family: 'Cairo'; margin-left: 5px; color: white; }
+
+        /* تصميم الفوتر الاحترافي */
+        .master-footer { 
+            position: fixed; bottom: 0; left: 0; width: 100%; 
+            background: rgba(255, 255, 255, 0.95); padding: 12px 0; text-align: center; 
+            border-top: 1px solid #eee; font-size: 13px; color: #555; z-index: 2000;
+            backdrop-filter: blur(5px);
+        }
+        .master-footer b { color: var(--primary); }
+    </style>
+</head>
+<body>
+
+    <div id="portal-screen">
+        <div id="public-view" class="portal-card">
+            <h2 style="color: var(--primary);">جمعية آل بوعوجة</h2>
+            <div class="search-container">
+                <input type="text" id="publicSearch" placeholder="ابحث باسمك هنا..." oninput="handleAutocomplete(this.value, 'suggestions', 'publicSearch')">
+                <div id="suggestions" class="suggestions-box"></div>
+            </div>
+            <button class="btn-main" onclick="publicQuery()">بحث عن بياناتي</button>
+            <div id="publicResult" style="display:none;"></div>
+            <button style="background:none; border:none; color:var(--primary); cursor:pointer; font-family:'Cairo'; margin-top: 25px;" onclick="toggleLogin(true)">دخول الموظفين ←</button>
+        </div>
+        <div id="login-view" class="portal-card" style="display:none;">
+            <h2 style="color: var(--primary);">تسجيل الدخول</h2>
+            <input type="text" id="userIn" placeholder="اسم المستخدم">
+            <input type="password" id="passIn" placeholder="كلمة السر">
+            <button class="btn-main" onclick="handleLogin()">دخول</button>
+            <button style="background:none; border:none; color:#999; cursor:pointer; margin-top:15px;" onclick="toggleLogin(false)">عودة</button>
+        </div>
+    </div>
+
+    <div class="app-container">
+        <div class="sidebar" id="app-sidebar">
+            <div class="sidebar-header">جمعية آل بوعوجة</div>
+            <div class="nav-item active" onclick="showSection('search-section')">🔎 بحث واستعلام</div>
+            <div class="nav-item" onclick="showSection('msg-center')">💬 مركز الرسائل</div>
+            <div class="nav-item" onclick="showSection('add-member')">➕ إضافة عضو</div>
+            <div class="nav-item" onclick="showSection('edit-section')">⚙️ إدارة البيانات</div>
+            <div class="nav-item" id="staff-nav" onclick="showSection('staff-section')">👥 الموظفين</div>
+            <div class="nav-item" onclick="showSection('report-section')">📊 التقارير المالية</div>
+            <div class="nav-item" style="margin-top:auto; color:var(--danger)" onclick="logoutApp()">🚪 تسجيل الخروج</div>
+        </div>
+
+        <div class="main-content" id="app-content">
+            <div id="search-section" class="view-section active">
+                <div class="card">
+                    <h3>🔎 استعلام إداري ذكي</h3>
+                    <div class="search-container">
+                        <input type="text" id="mainSearch" placeholder="اكتب حرفاً للبحث عن عضو..." oninput="handleAutocomplete(this.value, 'adminSuggestions', 'mainSearch', 'search')">
+                        <div id="adminSuggestions" class="suggestions-box"></div>
+                    </div>
+                    <div id="adminDetailView" style="margin-top:20px;"></div>
+                </div>
+            </div>
+
+            <div id="msg-center" class="view-section">
+                <div class="card">
+                    <h3>💬 مركز الرسائل الاحترافي</h3>
+                    <div class="search-container">
+                        <input type="text" id="msgSearch" placeholder="ابحث باسم العضو لإرسال رسالة..." oninput="handleAutocomplete(this.value, 'msgSuggestions', 'msgSearch', 'msg')">
+                        <div id="msgSuggestions" class="suggestions-box"></div>
+                    </div>
+                    <div id="msgActionArea" style="display:none; padding:20px; border:1px solid var(--primary); border-radius:15px; margin-top: 20px;">
+                        <h4 id="msgTargetName" style="margin-top:0"></h4>
+                        <p id="msgStatusPreview" style="font-size:13px; color:#666;"></p>
+                        <hr style="border:0; border-top:1px solid #eee;">
+                        <button class="btn-main btn-msg" style="background:#25D366" onclick="sendMsg('wa')">إرسال عبر WhatsApp</button>
+                        <button class="btn-main btn-msg" style="background:#333" onclick="sendMsg('sms')">إرسال عبر SMS</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="staff-section" class="view-section">
+                <div class="card">
+                    <h3>👥 إدارة شؤون الموظفين</h3>
+                    <div id="staffAdminForm" style="display:none; background:#f9f9f9; padding:20px; border-radius:15px; margin-bottom:20px;">
+                        <input type="hidden" id="stfIdx">
+                        <input type="text" id="stfName" placeholder="اسم الموظف">
+                        <input type="text" id="stfUser" placeholder="اسم المستخدم">
+                        <input type="password" id="stfPass" placeholder="كلمة السر">
+                        <button class="btn-main" id="stfBtn" onclick="saveStaff()">حفظ البيانات</button>
+                    </div>
+                    <div id="staffTableArea"></div>
+                    <p id="staffDenyMsg" style="color:red; text-align:center; display:none;">عذراً، التعديل والحذف متاح للمدير العام فقط.</p>
+                </div>
+            </div>
+
+            <div id="edit-section" class="view-section">
+                <div class="card">
+                    <h3>⚙️ تعديل بيانات الأعضاء</h3>
+                    <div class="search-container">
+                        <input type="text" id="editSearch" placeholder="ابحث باسم العضو للتعديل..." oninput="handleAutocomplete(this.value, 'editSuggestions', 'editSearch', 'edit')">
+                        <div id="editSuggestions" class="suggestions-box"></div>
+                    </div>
+                    <div id="editFields" style="display:none; margin-top:20px; background:#fcfcfc; padding:20px; border-radius:15px;">
+                        <input type="hidden" id="idxField">
+                        <label>الاسم الرباعي</label><input type="text" id="upMemName">
+                        <label>سنة الاشتراك</label><select id="upMemYear"></select>
+                        <label>رقم الهاتف</label><input type="text" id="upMemPhone">
+                        <label>قيمة الدفع</label><input type="number" id="upMemAmount">
+                        <button class="btn-main" onclick="updateMember()">حفظ التعديلات</button>
+                        <button class="btn-main" style="background:var(--danger); margin-top:10px;" onclick="deleteMember()">حذف العضو نهائياً</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="add-member" class="view-section">
+                <div class="card">
+                    <h3>➕ إضافة عضو جديد</h3>
+                    <input type="text" id="inMemName" placeholder="الاسم الرباعي">
+                    <input type="number" id="inMemAmount" placeholder="المبلغ">
+                    <select id="inMemYear"></select>
+                    <input type="text" id="inMemPhone" placeholder="رقم الهاتف">
+                    <button class="btn-main" onclick="addMember()">حفظ</button>
+                </div>
+            </div>
+
+            <div id="report-section" class="view-section">
+                <div class="stats-grid">
+                    <div class="stat-card blue"><h4>إجمالي الأعضاء</h4><b id="stTotal">0</b></div>
+                    <div class="stat-card green"><h4>المسددين ✅</h4><b id="stPaid">0</b></div>
+                    <div class="stat-card red"><h4>غير المسددين ❌</h4><b id="stUnpaid">0</b></div>
+                    <div class="stat-card orange"><h4>إجمالي الخزينة</h4><b id="stBalance">0</b></div>
+                    <div class="stat-card purple"><h4>إجمالي المتبقي</h4><b id="stRem">0</b></div>
+                </div>
+                <div class="card">
+                    <h4>📜 سجل آخر العمليات</h4>
+                    <div class="log-container"><table class="log-table"><thead><tr><th>التاريخ</th><th>العملية</th><th>الموظف</th><th>المبلغ</th></tr></thead><tbody id="logsBody"></tbody></table></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="master-footer">
+        تطوير وبرمجة بواسطة <b>عبدالمالك عطية</b> | جميع حقوق النشر محفوظة لعام 2025-2026 ©
+    </div>
+
+    <script>
+        const subFee = 120;
+        let staff = JSON.parse(localStorage.getItem('staff_db')) || [{ name: "المدير العام", user: "admin", pass: "123", role: "admin" }];
+        let members = JSON.parse(localStorage.getItem('members_db')) || [];
+        let logs = JSON.parse(localStorage.getItem('logs_db')) || [];
+        let activeUser = null;
+
+        function initYears() {
+            const sels = [document.getElementById('inMemYear'), document.getElementById('upMemYear')];
+            sels.forEach(s => { s.innerHTML = ""; for(let y=2025; y<=2125; y++) { s.innerHTML += `<option value="${y}">${y}</option>`; } });
+        }
+
+        function handleAutocomplete(val, boxId, inputId, type = 'public') {
+            const box = document.getElementById(boxId);
+            if (val.trim() === "") { box.style.display = "none"; return; }
+            const filtered = members.filter(m => m.name.includes(val.trim()));
+            if (filtered.length > 0) {
+                box.innerHTML = filtered.map(m => {
+                    const idx = members.indexOf(m);
+                    return `<div class="suggestion-item" onclick="selectSuggestion('${m.name}', ${idx}, '${boxId}', '${inputId}', '${type}')">${m.name}</div>`;
+                }).join('');
+                box.style.display = "block";
+            } else { box.style.display = "none"; }
+        }
+
+        function selectSuggestion(name, index, boxId, inputId, type) {
+            document.getElementById(inputId).value = name;
+            document.getElementById(boxId).style.display = "none";
+            if (type === 'search') showAdminDetail(index);
+            if (type === 'edit') selectMember(index, 'edit');
+            if (type === 'msg') selectMember(index, 'msg');
+        }
+
+        function showAdminDetail(idx) {
+            const m = members[idx];
+            const isPaid = m.amount >= subFee;
+            const detail = document.getElementById('adminDetailView');
+            detail.style.display = "block";
+            detail.innerHTML = `
+                <div style="background:#f8f9fa; padding:20px; border-radius:15px; border-right: 5px solid ${isPaid? 'var(--secondary)':'var(--danger)'}">
+                    <h3 style="margin:0">${m.name}</h3>
+                    <p>الحالة: <b style="color:${isPaid?'green':'red'}">${isPaid?'مسدد ✅':'غير مسدد ❌'} لعام ${m.year}</b></p>
+                    <p>المبلغ المدفوع: ${m.amount} د.ل | الهاتف: ${m.phone}</p>
+                </div>`;
+        }
+
+        function logoutApp() {
+            if(confirm("هل تريد تسجيل الخروج؟")) {
+                activeUser = null;
+                document.getElementById('app-sidebar').style.display = 'none';
+                document.getElementById('app-content').style.display = 'none';
+                document.getElementById('portal-screen').style.display = 'flex';
+                toggleLogin(false);
+            }
+        }
+
+        function toggleLogin(show) {
+            document.getElementById('public-view').style.display = show ? 'none' : 'block';
+            document.getElementById('login-view').style.display = show ? 'block' : 'none';
+        }
+
+        function handleLogin() {
+            const u = document.getElementById('userIn').value, p = document.getElementById('passIn').value;
+            const found = staff.find(s => s.user === u && s.pass === p);
+            if(found) {
+                activeUser = found;
+                document.getElementById('portal-screen').style.display = 'none';
+                document.getElementById('app-sidebar').style.display = 'flex';
+                document.getElementById('app-content').style.display = 'flex';
+                renderStaff(); updateStats(); renderLogs();
+                document.getElementById('userIn').value = ""; document.getElementById('passIn').value = "";
+            } else { alert("بيانات دخول خاطئة"); }
+        }
+
+        function publicQuery() {
+            const term = document.getElementById('publicSearch').value.trim();
+            const resDiv = document.getElementById('publicResult');
+            const f = members.find(m => m.name === term);
+            if(f) {
+                resDiv.style.display = "block";
+                resDiv.innerHTML = `<div style="background:var(--primary); color:#fff; padding:20px; border-radius:15px; margin-top:15px;"><h3>${f.name}</h3><p>المبلغ المدفوع: ${f.amount} د.ل</p><p>${f.amount >= subFee ? '✅ مسدد لعام ' + f.year : '⚠️ غير مسدد لعام ' + f.year}</p></div>`;
+            } else { alert("الاسم غير موجود، يرجى اختيار اسم من الاقتراحات"); }
+        }
+
+        function showSection(id) {
+            document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            updateStats();
+        }
+
+        function renderStaff() {
+            const isAdmin = activeUser && activeUser.role === 'admin';
+            document.getElementById('staffAdminForm').style.display = isAdmin ? 'block' : 'none';
+            document.getElementById('staffDenyMsg').style.display = isAdmin ? 'none' : 'block';
+            let h = '<table class="log-table"><tr><th>الاسم</th><th>المستخدم</th><th>إجراء</th></tr>';
+            staff.forEach((s, i) => {
+                let actions = isAdmin ? `<button onclick="editStaff(${i})" style="background:orange">تعديل</button>` : '---';
+                if(isAdmin && s.role !== 'admin') actions += `<button onclick="deleteStaff(${i})" style="background:red">حذف</button>`;
+                h += `<tr><td>${s.name}</td><td>${s.user}</td><td class="staff-actions">${actions}</td></tr>`;
+            });
+            document.getElementById('staffTableArea').innerHTML = h + '</table>';
+        }
+
+        function saveStaff() {
+            const idx = document.getElementById('stfIdx').value;
+            const n = document.getElementById('stfName').value, u = document.getElementById('stfUser').value, p = document.getElementById('stfPass').value;
+            if(idx === "") staff.push({ name: n, user: u, pass: p, role: "user" });
+            else { staff[idx].name = n; staff[idx].user = u; staff[idx].pass = p; document.getElementById('stfIdx').value = ""; }
+            localStorage.setItem('staff_db', JSON.stringify(staff)); renderStaff();
+        }
+
+        function selectMember(i, type) {
+            const m = members[i]; window.selectedMember = m;
+            if(type === 'edit') {
+                document.getElementById('editFields').style.display = 'block';
+                document.getElementById('idxField').value = i;
+                document.getElementById('upMemName').value = m.name;
+                document.getElementById('upMemPhone').value = m.phone;
+                document.getElementById('upMemAmount').value = m.amount;
+                document.getElementById('upMemYear').value = m.year;
+            }
+            if(type === 'msg') {
+                document.getElementById('msgActionArea').style.display = 'block';
+                document.getElementById('msgTargetName').innerText = "المستلم: " + m.name;
+                const status = m.amount >= subFee ? "مسدد ✅" : "غير مسدد ⚠️";
+                document.getElementById('msgStatusPreview').innerText = `حالة العضو: ${status} (المبلغ المدفوع: ${m.amount} د.ل)`;
+            }
+        }
+
+        function sendMsg(mode) {
+            const m = window.selectedMember;
+            let msg = "";
+            
+            if(m.amount >= subFee) {
+                msg = `تحية طيبة من جمعية آل بوعوجة 🌹\n\nالسيد العضو المحترم: ${m.name}\nنحيطكم علماً بأنه تم تأكيد سداد اشتراككم لعام ${m.year} بنجاح.\nالمبلغ المسدد: ${m.amount} دينار.\n\nنشكركم على التزامكم ودعمكم المستمر لمناشط الجمعية.\nدمتم بخير.`;
+            } else {
+                msg = `تحية طيبة من جمعية آل بوعوجة 🌹\n\nالسيد العضو المحترم: ${m.name}\nنود تذكيركم بضرورة سداد قيمة الاشتراك السنوي لعام ${m.year}.\n\nعلماً بأن قيمة الاشتراك المقررة هي: ${subFee} دينار.\nالمبلغ المسدد حالياً: ${m.amount} دينار.\nالمتبقي عليكم: ${subFee - m.amount} دينار.\n\nيرجى التنسيق مع إدارة الجمعية لإتمام عملية السداد في أقرب وقت.\nشكراً لتفهمكم.`;
+            }
+
+            const url = mode === 'wa' ? `https://wa.me/${m.phone}?text=${encodeURIComponent(msg)}` : `sms:${m.phone}?body=${encodeURIComponent(msg)}`;
+            window.open(url);
+        }
+
+        function addMember() {
+            const n = document.getElementById('inMemName').value, a = Number(document.getElementById('inMemAmount').value);
+            if(!n) return alert("الاسم مطلوب");
+            members.push({ name: n, amount: a, phone: document.getElementById('inMemPhone').value, year: document.getElementById('inMemYear').value });
+            localStorage.setItem('members_db', JSON.stringify(members)); addLog("إضافة", a); 
+            alert("تم الحفظ"); document.getElementById('inMemName').value=""; document.getElementById('inMemAmount').value="";
+        }
+
+        function updateMember() {
+            const i = document.getElementById('idxField').value;
+            members[i] = { name: document.getElementById('upMemName').value, year: document.getElementById('upMemYear').value, phone: document.getElementById('upMemPhone').value, amount: Number(document.getElementById('upMemAmount').value) };
+            localStorage.setItem('members_db', JSON.stringify(members)); addLog("تعديل", members[i].amount); 
+            alert("تم التعديل بنجاح"); document.getElementById('editFields').style.display = 'none';
+        }
+
+        function deleteMember() { if(confirm("هل أنت متأكد من حذف هذا العضو تماماً؟")) { members.splice(document.getElementById('idxField').value, 1); localStorage.setItem('members_db', JSON.stringify(members)); document.getElementById('editFields').style.display = 'none'; alert("تم الحذف"); } }
+
+        function addLog(t, a) { logs.unshift({ time: new Date().toLocaleString('ar-EG'), type: t, user: activeUser.name, amount: a + " د.ل" }); if(logs.length > 20) logs.pop(); localStorage.setItem('logs_db', JSON.stringify(logs)); }
+
+        function renderLogs() { document.getElementById('logsBody').innerHTML = logs.map(l => `<tr><td>${l.time}</td><td>${l.type}</td><td>${l.user}</td><td>${l.amount}</td></tr>`).join(''); }
+
+        function updateStats() {
+            const total = members.length;
+            const balance = members.reduce((s, m) => s + m.amount, 0);
+            const paid = members.filter(m => m.amount >= subFee).length;
+            const unpaid = total - paid;
+            const totalRequired = total * subFee;
+            const rem = Math.max(0, totalRequired - balance);
+
+            document.getElementById('stTotal').innerText = total;
+            document.getElementById('stPaid').innerText = paid;
+            document.getElementById('stUnpaid').innerText = unpaid;
+            document.getElementById('stBalance').innerText = balance.toLocaleString() + " د.ل";
+            document.getElementById('stRem').innerText = rem.toLocaleString() + " د.ل";
+        }
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.classList.contains('suggestion-item') && e.target.tagName !== 'INPUT') {
+                document.querySelectorAll('.suggestions-box').forEach(b => b.style.display = 'none');
+            }
+        });
+
+        initYears();
+    </script>
+</body>
+</html>
