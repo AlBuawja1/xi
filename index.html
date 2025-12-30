@@ -60,7 +60,6 @@
         
         .staff-actions button { padding: 5px 10px; border-radius: 8px; border: none; cursor: pointer; font-family: 'Cairo'; margin-left: 5px; color: white; }
 
-        /* تصميم الفوتر الاحترافي */
         .master-footer { 
             position: fixed; bottom: 0; left: 0; width: 100%; 
             background: rgba(255, 255, 255, 0.95); padding: 12px 0; text-align: center; 
@@ -98,10 +97,11 @@
             <div class="nav-item active" onclick="showSection('search-section')">🔎 بحث واستعلام</div>
             <div class="nav-item" onclick="showSection('msg-center')">💬 مركز الرسائل</div>
             <div class="nav-item" onclick="showSection('add-member')">➕ إضافة عضو</div>
+            <div class="nav-item" onclick="showSection('pay-section')">💵 دفع اشتراك</div>
             <div class="nav-item" onclick="showSection('edit-section')">⚙️ إدارة البيانات</div>
             <div class="nav-item" id="staff-nav" onclick="showSection('staff-section')">👥 الموظفين</div>
             <div class="nav-item" onclick="showSection('report-section')">📊 التقارير المالية</div>
-            <div class="nav-item" style="margin-top:auto; color:var(--danger)" onclick="logoutApp()">🚪 تسجيل الخروج</div>
+            <div class="nav-item" style="color:var(--danger)" onclick="logoutApp()">🚪 تسجيل الخروج</div>
         </div>
 
         <div class="main-content" id="app-content">
@@ -113,6 +113,24 @@
                         <div id="adminSuggestions" class="suggestions-box"></div>
                     </div>
                     <div id="adminDetailView" style="margin-top:20px;"></div>
+                </div>
+            </div>
+
+            <div id="pay-section" class="view-section">
+                <div class="card">
+                    <h3>💵 دفع قيمة اشتراك</h3>
+                    <div class="search-container">
+                        <input type="text" id="paySearch" placeholder="ابحث باسم العضو لتسجيل دفع..." oninput="handleAutocomplete(this.value, 'paySuggestions', 'paySearch', 'pay')">
+                        <div id="paySuggestions" class="suggestions-box"></div>
+                    </div>
+                    <div id="payActionArea" style="display:none; padding:20px; border:1px solid var(--secondary); border-radius:15px; margin-top: 20px;">
+                        <input type="hidden" id="payIdx">
+                        <h4 id="payTargetName" style="margin-top:0"></h4>
+                        <p id="payBalancePreview" style="font-size:14px; color:#666;"></p>
+                        <label>القيمة المراد دفعها الآن:</label>
+                        <input type="number" id="payAmountInput" placeholder="أدخل المبلغ بالدينار">
+                        <button class="btn-main" style="background:var(--secondary)" onclick="processPayment()">تأكيد عملية الدفع</button>
+                    </div>
                 </div>
             </div>
 
@@ -229,19 +247,41 @@
             if (type === 'search') showAdminDetail(index);
             if (type === 'edit') selectMember(index, 'edit');
             if (type === 'msg') selectMember(index, 'msg');
+            if (type === 'pay') selectMember(index, 'pay');
+        }
+
+        function getMemberStatus(amt) {
+            if (amt >= subFee) return { text: "مسدد ✅", color: "green" };
+            if (amt > 0 && amt < subFee) return { text: "دفع جزئي ⚠️", color: "orange" };
+            return { text: "غير مسدد ❌", color: "red" };
         }
 
         function showAdminDetail(idx) {
             const m = members[idx];
-            const isPaid = m.amount >= subFee;
+            const status = getMemberStatus(m.amount);
             const detail = document.getElementById('adminDetailView');
             detail.style.display = "block";
             detail.innerHTML = `
-                <div style="background:#f8f9fa; padding:20px; border-radius:15px; border-right: 5px solid ${isPaid? 'var(--secondary)':'var(--danger)'}">
+                <div style="background:#f8f9fa; padding:20px; border-radius:15px; border-right: 5px solid ${status.color}">
                     <h3 style="margin:0">${m.name}</h3>
-                    <p>الحالة: <b style="color:${isPaid?'green':'red'}">${isPaid?'مسدد ✅':'غير مسدد ❌'} لعام ${m.year}</b></p>
-                    <p>المبلغ المدفوع: ${m.amount} د.ل | الهاتف: ${m.phone}</p>
+                    <p>الحالة: <b style="color:${status.color}">${status.text} لعام ${m.year}</b></p>
+                    <p>المبلغ المدفوع كلياً: ${m.amount} د.ل | الهاتف: ${m.phone}</p>
                 </div>`;
+        }
+
+        function processPayment() {
+            const idx = document.getElementById('payIdx').value;
+            const amt = Number(document.getElementById('payAmountInput').value);
+            if (amt <= 0) return alert("يرجى إدخال مبلغ صحيح");
+            
+            members[idx].amount += amt;
+            localStorage.setItem('members_db', JSON.stringify(members));
+            addLog("دفع اشتراك", amt);
+            alert("تم تسجيل الدفع بنجاح");
+            document.getElementById('payAmountInput').value = "";
+            document.getElementById('payActionArea').style.display = "none";
+            document.getElementById('paySearch').value = "";
+            updateStats();
         }
 
         function logoutApp() {
@@ -277,14 +317,21 @@
             const resDiv = document.getElementById('publicResult');
             const f = members.find(m => m.name === term);
             if(f) {
+                const status = getMemberStatus(f.amount);
                 resDiv.style.display = "block";
-                resDiv.innerHTML = `<div style="background:var(--primary); color:#fff; padding:20px; border-radius:15px; margin-top:15px;"><h3>${f.name}</h3><p>المبلغ المدفوع: ${f.amount} د.ل</p><p>${f.amount >= subFee ? '✅ مسدد لعام ' + f.year : '⚠️ غير مسدد لعام ' + f.year}</p></div>`;
+                resDiv.innerHTML = `<div style="background:var(--primary); color:#fff; padding:20px; border-radius:15px; margin-top:15px;">
+                    <h3>${f.name}</h3>
+                    <p>المبلغ المدفوع: ${f.amount} د.ل</p>
+                    <p style="background:${status.color === 'orange' ? '#fbbc04' : ''}; padding:5px; border-radius:5px;">الحالة: ${status.text} لعام ${f.year}</p>
+                </div>`;
             } else { alert("الاسم غير موجود، يرجى اختيار اسم من الاقتراحات"); }
         }
 
         function showSection(id) {
             document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            const target = document.querySelector(`.nav-item[onclick="showSection('${id}')"]`);
+            if(target) target.classList.add('active');
             document.getElementById(id).classList.add('active');
             updateStats();
         }
@@ -323,20 +370,23 @@
             if(type === 'msg') {
                 document.getElementById('msgActionArea').style.display = 'block';
                 document.getElementById('msgTargetName').innerText = "المستلم: " + m.name;
-                const status = m.amount >= subFee ? "مسدد ✅" : "غير مسدد ⚠️";
-                document.getElementById('msgStatusPreview').innerText = `حالة العضو: ${status} (المبلغ المدفوع: ${m.amount} د.ل)`;
+                const status = getMemberStatus(m.amount);
+                document.getElementById('msgStatusPreview').innerText = `حالة العضو: ${status.text} (المبلغ المدفوع: ${m.amount} د.ل)`;
+            }
+            if(type === 'pay') {
+                document.getElementById('payActionArea').style.display = 'block';
+                document.getElementById('payIdx').value = i;
+                document.getElementById('payTargetName').innerText = m.name;
+                document.getElementById('payBalancePreview').innerText = `المبلغ الحالي في الحساب: ${m.amount} د.ل`;
             }
         }
 
         function sendMsg(mode) {
             const m = window.selectedMember;
             let msg = "";
+            const status = getMemberStatus(m.amount);
             
-            if(m.amount >= subFee) {
-                msg = `تحية طيبة من جمعية آل بوعوجة 🌹\n\nالسيد العضو المحترم: ${m.name}\nنحيطكم علماً بأنه تم تأكيد سداد اشتراككم لعام ${m.year} بنجاح.\nالمبلغ المسدد: ${m.amount} دينار.\n\nنشكركم على التزامكم ودعمكم المستمر لمناشط الجمعية.\nدمتم بخير.`;
-            } else {
-                msg = `تحية طيبة من جمعية آل بوعوجة 🌹\n\nالسيد العضو المحترم: ${m.name}\nنود تذكيركم بضرورة سداد قيمة الاشتراك السنوي لعام ${m.year}.\n\nعلماً بأن قيمة الاشتراك المقررة هي: ${subFee} دينار.\nالمبلغ المسدد حالياً: ${m.amount} دينار.\nالمتبقي عليكم: ${subFee - m.amount} دينار.\n\nيرجى التنسيق مع إدارة الجمعية لإتمام عملية السداد في أقرب وقت.\nشكراً لتفهمكم.`;
-            }
+            msg = `تحية طيبة من جمعية آل بوعوجة 🌹\n\nالسيد العضو المحترم: ${m.name}\nنحيطكم علماً بحالة اشتراككم لعام ${m.year}.\nالحالة: ${status.text}\nالمبلغ المسدد: ${m.amount} دينار.\n\nنشكركم على دعمكم المستمر.\nدمتم بخير.`;
 
             const url = mode === 'wa' ? `https://wa.me/${m.phone}?text=${encodeURIComponent(msg)}` : `sms:${m.phone}?body=${encodeURIComponent(msg)}`;
             window.open(url);
@@ -355,11 +405,12 @@
             members[i] = { name: document.getElementById('upMemName').value, year: document.getElementById('upMemYear').value, phone: document.getElementById('upMemPhone').value, amount: Number(document.getElementById('upMemAmount').value) };
             localStorage.setItem('members_db', JSON.stringify(members)); addLog("تعديل", members[i].amount); 
             alert("تم التعديل بنجاح"); document.getElementById('editFields').style.display = 'none';
+            updateStats();
         }
 
-        function deleteMember() { if(confirm("هل أنت متأكد من حذف هذا العضو تماماً؟")) { members.splice(document.getElementById('idxField').value, 1); localStorage.setItem('members_db', JSON.stringify(members)); document.getElementById('editFields').style.display = 'none'; alert("تم الحذف"); } }
+        function deleteMember() { if(confirm("هل أنت متأكد من حذف هذا العضو تماماً؟")) { members.splice(document.getElementById('idxField').value, 1); localStorage.setItem('members_db', JSON.stringify(members)); document.getElementById('editFields').style.display = 'none'; alert("تم الحذف"); updateStats(); } }
 
-        function addLog(t, a) { logs.unshift({ time: new Date().toLocaleString('ar-EG'), type: t, user: activeUser.name, amount: a + " د.ل" }); if(logs.length > 20) logs.pop(); localStorage.setItem('logs_db', JSON.stringify(logs)); }
+        function addLog(t, a) { logs.unshift({ time: new Date().toLocaleString('ar-EG'), type: t, user: activeUser.name, amount: a + " د.ل" }); if(logs.length > 20) logs.pop(); localStorage.setItem('logs_db', JSON.stringify(logs)); renderLogs(); }
 
         function renderLogs() { document.getElementById('logsBody').innerHTML = logs.map(l => `<tr><td>${l.time}</td><td>${l.type}</td><td>${l.user}</td><td>${l.amount}</td></tr>`).join(''); }
 
