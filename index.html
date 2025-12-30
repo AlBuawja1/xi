@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>منظومة جمعية آل بوعوجة - النسخة المحدثة</title>
+    <title>منظومة جمعية آل بوعوجة - نسخة منع التكرار</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         :root { 
@@ -165,7 +165,7 @@
 
             <div id="edit-section" class="view-section">
                 <div class="card">
-                    <h3>⚙️ تعديل بيانات الأعضاء</h3>
+                    <h3>⚙️ إدارة البيانات وتعديلها</h3>
                     <div class="search-container">
                         <input type="text" id="editSearch" placeholder="ابحث باسم العضو للتعديل..." oninput="handleAutocomplete(this.value, 'editSuggestions', 'editSearch', 'edit')">
                         <div id="editSuggestions" class="suggestions-box"></div>
@@ -185,7 +185,7 @@
             <div id="add-member" class="view-section">
                 <div class="card">
                     <h3>➕ إضافة عضو جديد</h3>
-                    <input type="text" id="inMemName" placeholder="الاسم الرباعي">
+                    <input type="text" id="inMemName" placeholder="الاسم الرباعي الكامل">
                     <input type="number" id="inMemAmount" placeholder="المبلغ المدفوع">
                     <select id="inMemYear"></select>
                     <input type="text" id="inMemPhone" placeholder="رقم الهاتف">
@@ -216,7 +216,11 @@
     <script>
         const subFee = 120;
         let staff = JSON.parse(localStorage.getItem('staff_db')) || [{ name: "المدير العام", user: "admin", pass: "123", role: "admin" }];
-        let members = JSON.parse(localStorage.getItem('members_db')) || [];
+        
+        // تم إفراغ مصفوفة الأعضاء تماماً بناءً على طلبك
+        let members = []; 
+        localStorage.setItem('members_db', JSON.stringify(members));
+
         let logs = JSON.parse(localStorage.getItem('logs_db')) || [];
         let activeUser = null;
 
@@ -247,7 +251,7 @@
             if (type === 'pay') selectMember(index, 'pay');
         }
 
-        // ================= إضافة عضو جديد مع منع التكرار =================
+        // ================= إضافة عضو جديد مع تفعيل منع التكرار الصارم =================
         function addMember() {
             const n = document.getElementById('inMemName').value.trim();
             const a = Number(document.getElementById('inMemAmount').value);
@@ -256,10 +260,10 @@
 
             if(!n) return alert("الاسم مطلوب");
 
-            // فحص التكرار
+            // فحص التكرار: يتم مقارنة الاسم الجديد بكافة الأسماء الموجودة
             const isDuplicate = members.some(m => m.name === n);
             if (isDuplicate) {
-                return alert("خطأ: هذا العضو مسجل مسبقاً في المنظومة!");
+                return alert("تنبيه: هذا العضو مسجل مسبقاً في المنظومة. لا يمكن تكرار الاسم!");
             }
 
             members.push({ name: n, amount: a, phone: p, year: y });
@@ -273,15 +277,15 @@
             updateStats();
         }
 
-        // ================= تعديل بيانات عضو مع منع تكرار الاسم =================
+        // ================= تعديل بيانات عضو مع منع التكرار عند تغيير الاسم =================
         function updateMember() {
             const i = document.getElementById('idxField').value;
             const newName = document.getElementById('upMemName').value.trim();
 
-            // فحص التكرار (استثناء العضو نفسه من البحث)
+            // فحص التكرار: استثناء العضو الحالي من الفحص لمسح إمكانية حفظ نفس الاسم له
             const isDuplicate = members.some((m, idx) => m.name === newName && idx != i);
             if (isDuplicate) {
-                return alert("خطأ: لا يمكن تغيير الاسم لهذا الاسم لأنه مستخدم لعضو آخر!");
+                return alert("خطأ: الاسم الجديد موجود بالفعل لعضو آخر. يرجى اختيار اسم مختلف!");
             }
 
             members[i] = { 
