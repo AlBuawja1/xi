@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>منظومة جمعية آل بوعوجة</title>
+    <title>منظومة جمعية آل بوعوجة - النسخة المحدثة</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         :root { 
@@ -56,10 +56,7 @@
         input, select { width: 100%; padding: 14px; margin: 10px 0; border: 1px solid #ddd; border-radius: 12px; font-family: 'Cairo'; outline: none; box-sizing: border-box; }
         .btn-main { width: 100%; padding: 14px; border: none; border-radius: 12px; background: var(--primary); color: #fff; font-weight: bold; cursor: pointer; transition: 0.3s; }
         .btn-main:hover { opacity: 0.9; }
-        .btn-msg { margin-top: 10px; font-weight: bold; }
         
-        .staff-actions button { padding: 5px 10px; border-radius: 8px; border: none; cursor: pointer; font-family: 'Cairo'; margin-left: 5px; color: white; }
-
         .master-footer { 
             position: fixed; bottom: 0; left: 0; width: 100%; 
             background: rgba(255, 255, 255, 0.95); padding: 12px 0; text-align: center; 
@@ -145,8 +142,8 @@
                         <h4 id="msgTargetName" style="margin-top:0"></h4>
                         <p id="msgStatusPreview" style="font-size:13px; color:#666;"></p>
                         <hr style="border:0; border-top:1px solid #eee;">
-                        <button class="btn-main btn-msg" style="background:#25D366" onclick="sendMsg('wa')">إرسال عبر WhatsApp</button>
-                        <button class="btn-main btn-msg" style="background:#333" onclick="sendMsg('sms')">إرسال عبر SMS</button>
+                        <button class="btn-main" style="background:#25D366; margin-bottom:10px;" onclick="sendMsg('wa')">إرسال عبر WhatsApp</button>
+                        <button class="btn-main" style="background:#333" onclick="sendMsg('sms')">إرسال عبر SMS</button>
                     </div>
                 </div>
             </div>
@@ -178,7 +175,7 @@
                         <label>الاسم الرباعي</label><input type="text" id="upMemName">
                         <label>سنة الاشتراك</label><select id="upMemYear"></select>
                         <label>رقم الهاتف</label><input type="text" id="upMemPhone">
-                        <label>قيمة الدفع</label><input type="number" id="upMemAmount">
+                        <label>إجمالي المبلغ المدفوع</label><input type="number" id="upMemAmount">
                         <button class="btn-main" onclick="updateMember()">حفظ التعديلات</button>
                         <button class="btn-main" style="background:var(--danger); margin-top:10px;" onclick="deleteMember()">حذف العضو نهائياً</button>
                     </div>
@@ -189,10 +186,10 @@
                 <div class="card">
                     <h3>➕ إضافة عضو جديد</h3>
                     <input type="text" id="inMemName" placeholder="الاسم الرباعي">
-                    <input type="number" id="inMemAmount" placeholder="المبلغ">
+                    <input type="number" id="inMemAmount" placeholder="المبلغ المدفوع">
                     <select id="inMemYear"></select>
                     <input type="text" id="inMemPhone" placeholder="رقم الهاتف">
-                    <button class="btn-main" onclick="addMember()">حفظ</button>
+                    <button class="btn-main" onclick="addMember()">حفظ البيانات</button>
                 </div>
             </div>
 
@@ -225,7 +222,7 @@
 
         function initYears() {
             const sels = [document.getElementById('inMemYear'), document.getElementById('upMemYear')];
-            sels.forEach(s => { s.innerHTML = ""; for(let y=2025; y<=2125; y++) { s.innerHTML += `<option value="${y}">${y}</option>`; } });
+            sels.forEach(s => { s.innerHTML = ""; for(let y=2025; y<=2035; y++) { s.innerHTML += `<option value="${y}">${y}</option>`; } });
         }
 
         function handleAutocomplete(val, boxId, inputId, type = 'public') {
@@ -248,6 +245,58 @@
             if (type === 'edit') selectMember(index, 'edit');
             if (type === 'msg') selectMember(index, 'msg');
             if (type === 'pay') selectMember(index, 'pay');
+        }
+
+        // ================= إضافة عضو جديد مع منع التكرار =================
+        function addMember() {
+            const n = document.getElementById('inMemName').value.trim();
+            const a = Number(document.getElementById('inMemAmount').value);
+            const p = document.getElementById('inMemPhone').value.trim();
+            const y = document.getElementById('inMemYear').value;
+
+            if(!n) return alert("الاسم مطلوب");
+
+            // فحص التكرار
+            const isDuplicate = members.some(m => m.name === n);
+            if (isDuplicate) {
+                return alert("خطأ: هذا العضو مسجل مسبقاً في المنظومة!");
+            }
+
+            members.push({ name: n, amount: a, phone: p, year: y });
+            localStorage.setItem('members_db', JSON.stringify(members)); 
+            addLog("إضافة عضو", a); 
+            
+            alert("تم حفظ بيانات العضو بنجاح");
+            document.getElementById('inMemName').value=""; 
+            document.getElementById('inMemAmount').value="";
+            document.getElementById('inMemPhone').value="";
+            updateStats();
+        }
+
+        // ================= تعديل بيانات عضو مع منع تكرار الاسم =================
+        function updateMember() {
+            const i = document.getElementById('idxField').value;
+            const newName = document.getElementById('upMemName').value.trim();
+
+            // فحص التكرار (استثناء العضو نفسه من البحث)
+            const isDuplicate = members.some((m, idx) => m.name === newName && idx != i);
+            if (isDuplicate) {
+                return alert("خطأ: لا يمكن تغيير الاسم لهذا الاسم لأنه مستخدم لعضو آخر!");
+            }
+
+            members[i] = { 
+                name: newName, 
+                year: document.getElementById('upMemYear').value, 
+                phone: document.getElementById('upMemPhone').value, 
+                amount: Number(document.getElementById('upMemAmount').value) 
+            };
+
+            localStorage.setItem('members_db', JSON.stringify(members)); 
+            addLog("تعديل بيانات", members[i].amount); 
+            
+            alert("تم التعديل بنجاح"); 
+            document.getElementById('editFields').style.display = 'none';
+            updateStats();
         }
 
         function getMemberStatus(amt) {
@@ -342,9 +391,9 @@
             document.getElementById('staffDenyMsg').style.display = isAdmin ? 'none' : 'block';
             let h = '<table class="log-table"><tr><th>الاسم</th><th>المستخدم</th><th>إجراء</th></tr>';
             staff.forEach((s, i) => {
-                let actions = isAdmin ? `<button onclick="editStaff(${i})" style="background:orange">تعديل</button>` : '---';
-                if(isAdmin && s.role !== 'admin') actions += `<button onclick="deleteStaff(${i})" style="background:red">حذف</button>`;
-                h += `<tr><td>${s.name}</td><td>${s.user}</td><td class="staff-actions">${actions}</td></tr>`;
+                let actions = isAdmin ? `<button onclick="editStaff(${i})" style="background:orange; border:none; color:white; padding:5px; border-radius:5px; cursor:pointer;">تعديل</button>` : '---';
+                if(isAdmin && s.role !== 'admin') actions += `<button onclick="deleteStaff(${i})" style="background:red; border:none; color:white; padding:5px; border-radius:5px; margin-right:5px; cursor:pointer;">حذف</button>`;
+                h += `<tr><td>${s.name}</td><td>${s.user}</td><td>${actions}</td></tr>`;
             });
             document.getElementById('staffTableArea').innerHTML = h + '</table>';
         }
@@ -355,6 +404,7 @@
             if(idx === "") staff.push({ name: n, user: u, pass: p, role: "user" });
             else { staff[idx].name = n; staff[idx].user = u; staff[idx].pass = p; document.getElementById('stfIdx').value = ""; }
             localStorage.setItem('staff_db', JSON.stringify(staff)); renderStaff();
+            document.getElementById('stfName').value=""; document.getElementById('stfUser').value=""; document.getElementById('stfPass').value="";
         }
 
         function selectMember(i, type) {
@@ -383,38 +433,10 @@
 
         function sendMsg(mode) {
             const m = window.selectedMember;
-            let msg = "";
             const status = getMemberStatus(m.amount);
-            
-            msg = `تحية طيبة من جمعية آل بوعوجة 🌹\n\nالسيد العضو المحترم: ${m.name}\nنحيطكم علماً بحالة اشتراككم لعام ${m.year}.\nالحالة: ${status.text}\nالمبلغ المسدد: ${m.amount} دينار.\n\nنشكركم على دعمكم المستمر.\nدمتم بخير.`;
-
+            let msg = `تحية طيبة من جمعية آل بوعوجة 🌹\n\nالسيد العضو المحترم: ${m.name}\nنحيطكم علماً بحالة اشتراككم لعام ${m.year}.\nالحالة: ${status.text}\nالمبلغ المسدد: ${m.amount} دينار.\n\nنشكركم على دعمكم المستمر.`;
             const url = mode === 'wa' ? `https://wa.me/${m.phone}?text=${encodeURIComponent(msg)}` : `sms:${m.phone}?body=${encodeURIComponent(msg)}`;
             window.open(url);
-        }
-
-        function addMember() {
-            const n = document.getElementById('inMemName').value.trim(), a = Number(document.getElementById('inMemAmount').value);
-            if(!n) return alert("الاسم مطلوب");
-            
-            // خاصية منع التكرار
-            const isExist = members.some(m => m.name === n);
-            if(isExist) {
-                return alert("عذراً، هذا الاسم مسجل مسبقاً في الجمعية!");
-            }
-
-            members.push({ name: n, amount: a, phone: document.getElementById('inMemPhone').value, year: document.getElementById('inMemYear').value });
-            localStorage.setItem('members_db', JSON.stringify(members)); addLog("إضافة", a); 
-            alert("تم حفظ العضو الجديد"); 
-            document.getElementById('inMemName').value=""; 
-            document.getElementById('inMemAmount').value="";
-        }
-
-        function updateMember() {
-            const i = document.getElementById('idxField').value;
-            members[i] = { name: document.getElementById('upMemName').value, year: document.getElementById('upMemYear').value, phone: document.getElementById('upMemPhone').value, amount: Number(document.getElementById('upMemAmount').value) };
-            localStorage.setItem('members_db', JSON.stringify(members)); addLog("تعديل", members[i].amount); 
-            alert("تم التعديل بنجاح"); document.getElementById('editFields').style.display = 'none';
-            updateStats();
         }
 
         function deleteMember() { if(confirm("هل أنت متأكد من حذف هذا العضو تماماً؟")) { members.splice(document.getElementById('idxField').value, 1); localStorage.setItem('members_db', JSON.stringify(members)); document.getElementById('editFields').style.display = 'none'; alert("تم الحذف"); updateStats(); } }
