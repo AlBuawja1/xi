@@ -393,11 +393,20 @@
         }
 
         function addMember() {
-            const n = document.getElementById('inMemName').value, a = Number(document.getElementById('inMemAmount').value);
+            const n = document.getElementById('inMemName').value.trim(), a = Number(document.getElementById('inMemAmount').value);
             if(!n) return alert("الاسم مطلوب");
+            
+            // خاصية منع التكرار
+            const isExist = members.some(m => m.name === n);
+            if(isExist) {
+                return alert("عذراً، هذا الاسم مسجل مسبقاً في الجمعية!");
+            }
+
             members.push({ name: n, amount: a, phone: document.getElementById('inMemPhone').value, year: document.getElementById('inMemYear').value });
             localStorage.setItem('members_db', JSON.stringify(members)); addLog("إضافة", a); 
-            alert("تم الحفظ"); document.getElementById('inMemName').value=""; document.getElementById('inMemAmount').value="";
+            alert("تم حفظ العضو الجديد"); 
+            document.getElementById('inMemName').value=""; 
+            document.getElementById('inMemAmount').value="";
         }
 
         function updateMember() {
